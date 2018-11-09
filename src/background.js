@@ -5,7 +5,7 @@ chrome.browserAction.onClicked.addListener(tab => {
 
   chrome.debugger.attach({ tabId: tab.id }, PROTOCOL_VERSION, () => {
     chrome.windows.create({
-      url: 'devtools.html?id=' + tab.id,
+      url: 'dist/devtools.html?id=' + tab.id,
       type: 'popup',
       width: 800,
       height: 600,
