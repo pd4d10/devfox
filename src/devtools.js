@@ -3,17 +3,19 @@ import ReactDOM from '../debugger.html/node_modules/react-dom'
 import { Provider } from '../debugger.html/node_modules/react-redux'
 import App from '../debugger.html/src/components/App'
 import * as firefox from '../debugger.html/src/client/firefox'
-
 import { prefs, asyncStore } from '../debugger.html/src/utils/prefs'
-import { L10N } from '../debugger.html/node_modules/devtools-launchpad'
+import L10N from '../debugger.html/node_modules/devtools-launchpad/src/utils/L10N'
+import sourceMaps from '../debugger.html/node_modules/devtools-source-map'
 import * as search from '../debugger.html/src/workers/search'
 import * as prettyPrint from '../debugger.html/src/workers/pretty-print'
 import * as parser from '../debugger.html/src/workers/parser'
-import { startSourceMapWorker } from '../debugger.html/node_modules/devtools-source-map'
 import { setupHelper } from '../debugger.html/src/utils/dbg'
-
 import { bootstrapStore } from '../debugger.html/src/utils/bootstrap'
 import { initialBreakpointsState } from '../debugger.html/src/reducers/breakpoints'
+import * as client from './client'
+
+import '../debugger.html/node_modules/devtools-mc-assets/assets/devtools/client/themes/light-theme.css'
+import '../debugger.html/node_modules/devtools-mc-assets/assets/devtools/client/themes/dark-theme.css'
 
 document.documentElement.classList.add('theme-light')
 
@@ -49,13 +51,10 @@ async function loadInitialState() {
   return { pendingBreakpoints, tabs, breakpoints }
 }
 
-const sourceMaps = require('../debugger.html/node_modules/devtools-source-map')
-
-export async function main() {
-  const commands = firefox.clientCommands
+async function main() {
   const initialState = await loadInitialState()
   const { store, actions, selectors } = bootstrapStore(
-    commands,
+    firefox.clientCommands,
     {
       services: { sourceMaps },
       toolboxActions: {},
@@ -64,7 +63,7 @@ export async function main() {
   )
 
   // workers
-  startSourceMapWorker(
+  sourceMaps.startSourceMapWorker(
     '/dist/source-map-worker.js',
     './source-map-worker-assets/',
   )
@@ -73,13 +72,21 @@ export async function main() {
   search.start('/dist/search-worker.js')
 
   // TODO:
-  const connection = {
-    tabConnection: {
-      tabTarget: null,
-      threadClient: null,
-      debuggerClient: null,
-    },
-  }
+  const tabs = await client.connectClient()
+  // if (!tabs) return undefined
+
+  const tab = tabs.find(t => t.id.indexOf(connTarget.param) !== -1)
+  // if (!tab) return undefined
+
+  const tabConnection = await client.connectTab({
+    title: 'title',
+    url: 'url',
+    id: 'id',
+    // FIXME: would be good to fill this out better
+    tab: '',
+    clientType: 'chrome',
+  })
+  const connection = { tabConnection }
 
   await firefox.onConnect(connection, actions)
   await loadFromPrefs(actions)
